@@ -47,8 +47,9 @@ class Answer extends Model
         return $this->id === $question->best_answer_id ? 'text-success' : 'text-dark';
     }
 
-    public function vote(int $vote) {
-        $this->votes()->attach(auth()->id(), ['vote' => $vote]);
+    public function vote(int $vote, User $user = null) {
+        $user = $user ?? auth()->user();
+        $this->votes()->attach($user->id, ['vote' => $vote]);
         if($vote < 0)
         {
             $this->decrement('votes_count');
@@ -59,8 +60,9 @@ class Answer extends Model
         }
     }
 
-    public function updateVote(int $vote) {
-        $this->votes()->updateExistingPivot(auth()->id(), ['vote' => $vote]);
+    public function updateVote(int $vote, User $user = null) {
+        $user = $user ?? auth()->user();
+        $this->votes()->updateExistingPivot($user->id, ['vote' => $vote]);
         if($vote < 0)
         {
             $this->decrement('votes_count', 2);

@@ -65,9 +65,10 @@ class Question extends Model
         $this->update(['best_answer_id' => $answer->id]);
     }
 
-    public function vote(int $vote)
+    public function vote(int $vote, User $user = null)
     {
-        $this->votes()->attach(auth()->id(), ['vote' => $vote]);
+        $user = $user ?? auth()->user();
+        $this->votes()->attach($user->id, ['vote' => $vote]);
         if($vote < 0)
         {
             $this->decrement('votes_count');

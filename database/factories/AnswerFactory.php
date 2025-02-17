@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Question;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -10,17 +11,13 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class AnswerFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'body' => fake()->paragraphs(random_int(3, 7), true),
-            'user_id'=> User::pluck('id')->random(),
-            'votes_count' => random_int(-10, 10)
+            'body' => $this->faker->paragraph(),
+            'user_id' => User::factory(),
+            'question_id' => Question::factory(),
+            'votes_count' => 0,
         ];
     }
 }
