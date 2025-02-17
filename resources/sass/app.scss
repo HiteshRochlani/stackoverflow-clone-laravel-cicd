@@ -1,0 +1,32 @@
+// Fonts
+@import url('https://fonts.bunny.net/css?family=Nunito');
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import 'bootstrap/scss/bootstrap';
+
+.statistics {
+    strong {
+        font-size: 1.2rem;
+    }
+
+    .answers {
+        padding: 10px;
+        border-radius: 5px;
+
+        &.answered {
+            border: solid 1px $success;
+            color: $success;
+        }
+        &.has-best-answer {
+            background: $success;
+            color: $white;
+        }
+        &.unanswered {
+            background: $danger;
+            color: $white;
+        }
+    }
+}
