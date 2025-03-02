@@ -1,0 +1,39 @@
+services:
+  #PHP Service
+  stackoverflow_backend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+    container_name: stackoverflow_backend
+    restart: unless-stopped
+    tty: true
+    working_dir: /var/www/
+    volumes:
+      - laravel_app:/var/www
+    ports:
+      - "9001:9000"
+    networks:
+      - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # to access DB residing on host machine
+
+  webserver-stackoverflow:
+    image: nginx:alpine
+    container_name: stackoverflow_ws
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "9080:80"
+    volumes:
+      - laravel_app:/var/www # so that nginx serves files
+      - ./build/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # so that external nginx can proxy to docker network
+
+volumes:
+  laravel_app:
+
+networks:
+  default:
