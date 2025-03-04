@@ -35,15 +35,19 @@ COPY composer.lock composer.json ./
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-RUN composer install
+RUN composer install --no-scripts
 
 COPY package*.json ./
 
-RUN npm install && npm run build
+RUN npm install 
 
 COPY ./build/php/laravel.ini /usr/local/etc/php/conf.d/laravel.ini
 
 COPY . .
+
+RUN composer dump-autoload
+
+RUN npm run build
 
 RUN php artisan storage:link
 
