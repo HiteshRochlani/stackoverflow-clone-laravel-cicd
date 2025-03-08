@@ -18,7 +18,9 @@ services:
       - "host.docker.internal:host-gateway" # to access DB residing on host machine
 
   webserver-stackoverflow:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: build/Dockerfile-nginx
     container_name: stackoverflow_ws
     restart: unless-stopped
     tty: true
@@ -26,7 +28,6 @@ services:
       - "9080:80"
     volumes:
       - laravel_app:/var/www # so that nginx serves files
-      - ./build/nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       - default
     extra_hosts:
