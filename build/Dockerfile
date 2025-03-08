@@ -45,6 +45,7 @@ COPY ./build/php/laravel.ini /usr/local/etc/php/conf.d/laravel.ini
 
 COPY . .
 
+
 RUN composer dump-autoload
 
 RUN npm run build
