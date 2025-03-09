@@ -61,14 +61,14 @@ pipeline {
         stage ("Deploy") {
             steps {
                 script {
-                    def remoteCommands = '''
+                    def remoteCommands = """
                         cd ${PROJECT_PATH} && 
                         git fetch origin ${env.GIT_BRANCH} &&
                         docker pull ${IMAGE_NAME_BACKEND} && docker pull ${IMAGE_NAME_WEBSERVER} &&
                         docker composer down -v &&
                         git checkout -f ${env.GIT_COMMIT} &&
                         COMMIT_SHA=${env.GIT_COMMIT} docker compose up -d
-                    '''
+                    """
 
                     sshagent([SSH_CREDENTIALS_ID]) {
                         // Connect to the remote server and run git pull
