@@ -63,10 +63,10 @@ pipeline {
                 script {
                     def remoteCommands = '''
                         cd ${PROJECT_PATH} && 
-                        git fetch ${env.GIT_COMMIT} &&
+                        git fetch origin ${env.GIT_BRANCH} &&
                         docker pull ${IMAGE_NAME_BACKEND} && docker pull ${IMAGE_NAME_WEBSERVER} &&
                         docker composer down -v &&
-                        git checkout ${env.GIT_COMMIT} &&
+                        git checkout -f ${env.GIT_COMMIT} &&
                         COMMIT_SHA=${env.GIT_COMMIT} docker compose up -d
                     '''
 
