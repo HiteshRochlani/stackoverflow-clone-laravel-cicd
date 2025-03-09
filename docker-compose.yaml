@@ -1,9 +1,7 @@
 services:
   #PHP Service
   stackoverflow_backend:
-    build:
-      context: .
-      dockerfile: build/Dockerfile
+    image: local.lan/stackoverflow_backend:${COMMIT_SHA}
     container_name: stackoverflow_backend
     restart: unless-stopped
     tty: true
@@ -18,9 +16,7 @@ services:
       - "host.docker.internal:host-gateway" # to access DB residing on host machine
 
   webserver-stackoverflow:
-    build:
-      context: .
-      dockerfile: build/Dockerfile-nginx
+    image: local.lan/stackoverflow_backend:${COMMIT_SHA}
     container_name: stackoverflow_ws
     restart: unless-stopped
     tty: true
