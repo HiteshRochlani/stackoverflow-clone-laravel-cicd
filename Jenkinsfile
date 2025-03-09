@@ -39,6 +39,7 @@ pipeline {
                 }
             }
         }
+
         stage ("Build Image") {
             steps {
                 script {
@@ -79,6 +80,21 @@ pipeline {
                 }
             }
         }
+
+       stage ("Migration") {
+        steps {
+            script {
+                def migrationCommand = "docker exec stackoverflow_backend php artisan migrate --force"
+                sshagent([SSH_CREDENTIALS_ID]) {
+                    // Connect to the remote server and run git pull
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '${migrationCommand}'
+                    """
+                }
+                
+            }
+        }
+       }
     }
 
     post {
