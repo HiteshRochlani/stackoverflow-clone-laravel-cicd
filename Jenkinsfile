@@ -80,4 +80,16 @@ pipeline {
             }
         }
     }
+
+    post {
+        script {
+            sshagent([SSH_CREDENTIALS_ID]) {
+                // Connect to the remote server and run git pull
+                sh """
+                    ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} 'docker image prune -a -f'
+                """
+            }
+        }
+
+    }
 }
