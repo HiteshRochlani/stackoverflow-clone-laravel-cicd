@@ -49,6 +49,30 @@ pipeline {
             }
         }
 
+        stage ("PHP Unit") {
+            steps{
+                sh """
+                    docker create --name ${env.GIT_COMMIT} ${IMAGE_NAME_BACKEND}
+                    docker cp ${env.GIT_COMMIT}:/var/www/vendor ./vendor
+                    docker rm ${env.GIT_COMMIT}
+
+                """
+                sh """
+                    docker run --rm \
+                    -v ${WORKSPACE}:/var/www \
+                    -w /var/www \
+                    --entrypoint "" \
+                    ${IMAGE_NAME_BACKEND} \
+                    ./vendor/bin/phpunit --log-junit build/reports/phpunit.xml
+                """
+            }
+            post {
+                always {
+                    junit skipPublishingChecks: true, testResults: 'build/reports/phpunit.xml'
+                }
+            }
+        }
+
         stage ("Push Image") {
             steps {
                 script {
