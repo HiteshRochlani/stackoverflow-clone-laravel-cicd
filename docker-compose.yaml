@@ -16,7 +16,7 @@ services:
       - "host.docker.internal:host-gateway" # to access DB residing on host machine
 
   webserver-stackoverflow:
-    image: local.lan/stackoverflow_backend:${COMMIT_SHA}
+    image: local.lan/stackoverflow_ws:${COMMIT_SHA}
     container_name: stackoverflow_ws
     restart: unless-stopped
     tty: true
