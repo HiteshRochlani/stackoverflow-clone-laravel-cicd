@@ -119,7 +119,13 @@ pipeline {
             }
         }
        }
+       stage ("Trigger Automatiojn") {
+        steps  {
+            build job: "stackoverflow-devops-automation", wait: true
+        }
+       }
     }
+    
 
     post {
         cleanup {
