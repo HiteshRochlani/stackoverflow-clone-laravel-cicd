@@ -2,29 +2,29 @@ pipeline {
     agent any
 
     environment {
+        PROJECT_PATH_MAIN = '/home/server2/projects/stackoverflow-devops-demo'
+        PROJECT_PATH_STAGING = '/home/server1/projects/stackoverflow-devops-demo'
+
         IMAGE_HOST = 'local.lan'
         IMAGE_NAME_BACKEND = "${IMAGE_HOST}/stackoverflow_backend:${env.GIT_COMMIT}"
         IMAGE_NAME_WEBSERVER = "${IMAGE_HOST}/stackoverflow_ws:${env.GIT_COMMIT}"
-        REMOTE_USER_SERVER1 = 'server1'
-        REMOTE_HOST_SERVER1 = 'server1.in'
-        REMOTE_PATH_SERVER1 = '/home/server1/projects/stackoverflow-devops-demo'
 
-        REMOTE_USER_SERVER2 = 'server2'
-        REMOTE_HOST_SERVER2 = 'server2.in'
-        REMOTE_PATH_SERVER2 = '/home/server2/projects/stackoverflow-devops-demo'
-
-        SSH_CREDENTIALS_SERVER1 = 'server1-ssh-credentials'
-        SSH_CREDENTIALS_SERVER2 = 'server2-ssh-credentials'
+        SSH_CREDENTIALS_ID_MAIN = 'server2-vm-ssh-credentials'
+        REMOTE_USER_MAIN = 'server2'
+        REMOTE_HOST_MAIN = 'server2.in'
+        
+        SSH_CREDENTIALS_ID_STAGING = 'server1-vm-ssh-credentials'
+        REMOTE_USER_STAGING = 'server1'
+        REMOTE_HOST_STAGING = 'server1.in'
     }
 
     stages {
-        stage ("Checkout") {
+        stage ("Checkoutscm") {
             steps {
                 checkout scm
             }
         }
-
-        stage ("Generate Environment") {
+        stage ("Generate Environmnt") {
             steps {
                 withCredentials([
                     string(credentialsId: 'DB_DATABASE', variable: 'DB_DATABASE'),
@@ -45,33 +45,29 @@ pipeline {
                 }
             }
         }
-
-        stage ("Build Docker Images") {
+        stage ("Build Dockerfile") {
             steps {
                 script {
-                    sh 'docker build -t ${IMAGE_NAME_BACKEND} . -f build/Dockerfile'
-                    sh 'docker build -t ${IMAGE_NAME_WEBSERVER} . -f build/Dockerfile-nginx'
+                    sh "docker build -t ${IMAGE_NAME_BACKEND} . -f build/Dockerfile"
+                    sh "docker build -t ${IMAGE_NAME_WEBSERVER} . -f build/Dockerfile-nginx"
                 }
             }
         }
-
-        stage ("Run Test Cases") {
+        stage ("PHP Unit") {
             steps {
-                script {
-                    sh """
-                        docker create --name ${env.GIT_COMMIT} ${IMAGE_NAME_BACKEND}
-                        docker cp ${env.GIT_COMMIT}:/var/www/vendor ./vendor 
-                        docker rm ${env.GIT_COMMIT}
-                    """
-                    sh """
-                        docker run --rm \
-                        -v ${WORKSPACE}:/var/www \
-                        -w /var/www \
-                        --entrypoint "" \
-                        ${IMAGE_NAME_BACKEND} \
-                        ./vendor/bin/phpunit --log-junit build/reports/phpunit.xml
-                    """
-                }
+                sh"""
+                    docker create --name ${env.GIT_COMMIT} ${IMAGE_NAME_BACKEND}
+                    docker cp ${env.GIT_COMMIT}:/var/www/vendor ./vendor 
+                    docker rm ${env.GIT_COMMIT}
+                """
+                sh"""
+                    docker run --rm \
+                    -v ${WORKSPACE}:/var/www \
+                    -w /var/www \
+                    --entrypoint "" \
+                    ${IMAGE_NAME_BACKEND} \
+                    ./vendor/bin/phpunit --log-junit build/reports/phpunit.xml
+                """
             }
             post {
                 always {
@@ -79,10 +75,7 @@ pipeline {
                 }
             }
         }
-
-
-
-        stage ("Push Docker Images") {
+        stage ("Push Image") {
             steps {
                 script {
                     sh 'docker push ${IMAGE_NAME_BACKEND}'
@@ -90,63 +83,78 @@ pipeline {
                 }
             }
         }
-
-        stage ("Deploy to Appropriate Server") {
+        stage ("Deploying for server 1 and 2") {
             steps {
                 script {
-                    def remoteHost = (env.BRANCH_NAME == 'staging') ? REMOTE_HOST_SERVER1 : REMOTE_HOST_SERVER2
-                    def remoteUser = (env.BRANCH_NAME == 'staging') ? REMOTE_USER_SERVER1 : REMOTE_USER_SERVER2
-                    def remotePath = (env.BRANCH_NAME == 'staging') ? REMOTE_PATH_SERVER1 : REMOTE_PATH_SERVER2
-                    def sshCredentials = (env.BRANCH_NAME == 'staging') ? SSH_CREDENTIALS_SERVER1 : SSH_CREDENTIALS_SERVER2
+        	    def projectPath = (env.GIT_BRANCH == 'staging') ? '/home/server1/projects/stackoverflow-devops-demo' : '/home/server2/projects/stackoverflow-devops-demo'
 
-                    def deployCommands = """
-                        cd ${remotePath} &&
-                        git fetch origin ${env.BRANCH_NAME} &&
+                    def remoteCommands = """
+                        cd ${projectPath} &&
+                        git fetch origin ${env.GIT_BRANCH} &&
                         docker pull ${IMAGE_NAME_BACKEND} && docker pull ${IMAGE_NAME_WEBSERVER} &&
                         docker compose down -v &&
                         git checkout -f ${env.GIT_COMMIT} &&
                         COMMIT_SHA=${env.GIT_COMMIT} docker compose up -d
                     """
+                    
+                    def sshCredentialsId = (env.GIT_BRANCH == 'staging') ? SSH_CREDENTIALS_ID_STAGING : SSH_CREDENTIALS_ID_MAIN
+                    def remoteUser = (env.GIT_BRANCH == 'staging') ? REMOTE_USER_STAGING : REMOTE_USER_MAIN
+                    def remoteHost = (env.GIT_BRANCH == 'staging') ? REMOTE_HOST_STAGING : REMOTE_HOST_MAIN
 
-                    sshagent([sshCredentials]) {
+
+                    sshagent([sshCredentialsId]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${remoteUser}@${remoteHost} '${deployCommands}'
+                            ssh -o StrictHostKeyChecking=no ${remoteUser}@${remoteHost} "${remoteCommands}"
                         """
                     }
                 }
             }
         }
-
-        stage ("Run Migrations on Deployment Server") {
+        stage ("Migration") {
             steps {
                 script {
-                    def remoteHost = (env.BRANCH_NAME == 'staging') ? REMOTE_HOST_SERVER1 : REMOTE_HOST_SERVER2
-                    def remoteUser = (env.BRANCH_NAME == 'staging') ? REMOTE_USER_SERVER1 : REMOTE_USER_SERVER2
-                    def sshCredentials = (env.BRANCH_NAME == 'staging') ? SSH_CREDENTIALS_SERVER1 : SSH_CREDENTIALS_SERVER2
-
                     def migrationCommand = "docker exec stackoverflow_backend php artisan migrate --force"
-
-                    sshagent([sshCredentials]) {
-                        sh """
-                            ssh -o StrictHostKeyChecking=no ${remoteUser}@${remoteHost} '${migrationCommand}'
-                        """
+                    if (env.GIT_BRANCH == 'staging') {
+                        sshagent([SSH_CREDENTIALS_ID_STAGING]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ${REMOTE_USER_STAGING}@${REMOTE_HOST_STAGING} '${migrationCommand}'
+                            """
+                        }
+                    } else if (env.GIT_BRANCH == 'main') {
+                        sshagent([SSH_CREDENTIALS_ID_MAIN]) {
+                            sh """
+                                ssh -o StrictHostKeyChecking=no ${REMOTE_USER_MAIN}@${REMOTE_HOST_MAIN} '${migrationCommand}'
+                            """
+                        }
                     }
                 }
+            }
+        }
+        stage("Trigger Automation") {
+            when {
+                branch 'staging'
+            }
+            steps {
+                build job: "stackoverflow-devops-automation", wait: true
             }
         }
     }
 
     post {
         cleanup {
-            script {
-                def sshCredentials = (env.BRANCH_NAME == 'staging') ? SSH_CREDENTIALS_SERVER1 : SSH_CREDENTIALS_SERVER2
-                def remoteHost = (env.BRANCH_NAME == 'staging') ? REMOTE_HOST_SERVER1 : REMOTE_HOST_SERVER2
-                def remoteUser = (env.BRANCH_NAME == 'staging') ? REMOTE_USER_SERVER1 : REMOTE_USER_SERVER2
-
-                sshagent([sshCredentials]) {
+        	script {
+                if (env.GIT_BRANCH == 'staging') {
+                    sshagent([SSH_CREDENTIALS_ID_STAGING]) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${remoteUser}@${remoteHost} 'docker image prune -a -f'
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER_STAGING}@${REMOTE_HOST_STAGING} 'docker image prune -a -f'
                     """
+                    }
+                } else if (env.GIT_BRANCH == 'main') {
+                    sshagent([SSH_CREDENTIALS_ID_MAIN]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${REMOTE_USER_MAIN}@${REMOTE_HOST_MAIN} 'docker image prune -a -f'
+                    """
+                    }
                 }
             }
         }
