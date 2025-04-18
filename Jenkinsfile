@@ -92,7 +92,7 @@ pipeline {
             steps {
                 script {
                     def remoteCommands = """
-                        /home/hitesh/.local/bin/ansible-playbook --extra-vars "docker_host=${IMAGE_HOST} commit_sha=${env.GIT_COMMIT} jenkins_project_path=${WORKSPACE}" /home/hitesh/ansible/docker-deployment.yaml
+                        /home/hitesh/.local/bin/ansible-playbook --extra-vars "docker_host=${IMAGE_HOST} commit_sha=${env.GIT_COMMIT} jenkins_project_path=${WORKSPACE}" /home/hitesh/Desktop/Ansible/docker-deployment.yaml
                     """
 
                     sshagent([ANSIBLE_CREDENTIALS_ID]) {
