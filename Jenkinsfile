@@ -9,6 +9,11 @@ pipeline {
         SSH_CREDENTIALS_ID = 'server2-vm-ssh-credentials'
         REMOTE_USER = 'server2'
         REMOTE_HOST = 'server2.in'
+
+
+        ANSIBLE_CREDENTIALS_ID = 'ansible-ssh-credentials'
+        ANSIBLE_REMOTE_USER = 'hitesh'
+        ANSIBLE_REMOTE_HOST = 'local.lan'
     }
 
     stages {
@@ -87,18 +92,13 @@ pipeline {
             steps {
                 script {
                     def remoteCommands = """
-                        cd ${PROJECT_PATH} && 
-                        git fetch origin ${env.GIT_BRANCH} &&
-                        docker pull ${IMAGE_NAME_BACKEND} && docker pull ${IMAGE_NAME_WEBSERVER} &&
-                        docker compose down -v &&
-                        git checkout -f ${env.GIT_COMMIT} &&
-                        COMMIT_SHA=${env.GIT_COMMIT} docker compose up -d
+                        /home/hitesh/.local/bin/ansible-playbook --extra-vars "docker_host=${IMAGE_HOST} commit_sha=${env.GIT_COMMIT} jenkins_project_path=${WORKSPACE}" /home/hitesh/ansible/docker-deployment.yaml
                     """
 
-                    sshagent([SSH_CREDENTIALS_ID]) {
+                    sshagent([ANSIBLE_CREDENTIALS_ID]) {
                         // Connect to the remote server and run git pull
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${REMOTE_USER}@${REMOTE_HOST} '${remoteCommands}'
+                            ssh -o StrictHostKeyChecking=no ${ANSIBLE_REMOTE_USER}@${ANSIBLE_REMOTE_HOST} '${remoteCommands}'
                         """
                     }
                 }
